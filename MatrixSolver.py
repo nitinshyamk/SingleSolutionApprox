@@ -168,13 +168,12 @@ class ForwardWork(System):
         normalize = np.sum(np.absolute(self.z));
         sample = np.cumsum(np.absolute(self.z)/normalize);
         accum = 0.0;
-        for length in rd.randint(self.lmax+1, size = numwalks):
+        for length in (rd.randint(self.lmax, size = numwalks)+1):
             start = bin_search(sample, rd.random());
-            if length > 0:
-                for k in rd.randint(length, size = 1):
-                    accum+= self.lmax*np.sign(self.z[start])*normalize*self.run_k_fwalk(start, k, length)
-        print accum/float(numwalks);
-        return accum/float(numwalks) + self.z;
+            for k in range(length+1):
+                accum+= (self.lmax)*np.sign(self.z[start])*normalize*self.run_k_fwalk(start, k, length)
+        print 'score: '+str(accum/float(numwalks));
+        return accum/float(numwalks) #+ self.z[self.target];
 
 import time
 class Solver:
