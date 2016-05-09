@@ -2,7 +2,8 @@
 # Nitin Shyamkumar, Siddhartha Banerjee
 # This python file contains classes for testing the bidirectional randomized
 # algorithm for approximating a single component of the solution x
-# to the matrix equation x = Gx + z, assuming that G is substochastic
+# to the matrix equation x = Gx + z, assuming that G is substochastic 
+# and that the maximum rowsum of abs(G) < 1
 
 import numpy as np
 import numpy.random as rd
@@ -58,6 +59,7 @@ class ReverseWork(System):
     '''
     Fields: 
         inherits same fields from System, additionally:
+
         lmax: maximum length to perform reverse push operation
         residuals: matrix of residuals - dimension: lmax x states
         qest: the estimate matrix - dimension: lmax x states
@@ -97,6 +99,10 @@ class ReverseWork(System):
             self.residuals[l+1, :] = self.residuals[l+1, :] + topush * self.G[state, :];
             self._residuals_abs[l+1, :] = np.absolute(self.residuals[l+1, :]);
 
+    '''
+    reverse_work performs a sequence of reverse_push operations until
+    magnitude of residual is less than tol (maxresidual)
+    '''
     def reverse_work(self, tol):
         maxresid = np.max(self._residuals_abs);
         while (maxresid > tol):
@@ -123,8 +129,13 @@ def bin_search(vec, val):
     return bin_search_help(vec, val, 0, vec.shape[0]);
 
 
-class ForwardWork(System):
 
+class ForwardWork(System):
+    '''
+    ForwardWork(G, z, target, residuals, lmax)
+    constructs an object to simulate forward random walks from z 
+    to the residuals 
+    '''
     def __init__(self, G, z, target, residuals, lmax):
         System.__init__(self, G, z, target);
         Gabs = np.absolute(G);
@@ -137,28 +148,33 @@ class ForwardWork(System):
         self.lmax = lmax;
 
 
-    def run_k_fwalk(self, ind, k):
+    '''
+    runs a walk of length k and get the residual at length - k
+    '''
+    def run_k_fwalk(self, ind, k, length):
         score = 1.0;
         for i in range(k):
             next = bin_search(self.Gprob[ind, :], rd.random());
             score *= self.rowsums[ind]*self.Gsign[ind, next];
             ind = next;
-        print score*self.residuals[self.lmax - k, ind];
-        return score*self.residuals[self.lmax - k, ind];
+        return score*self.residuals[length - k, ind];
 
+    '''
+    perform numwalks forward walks drawing
+    length ~ [1, lmax]
+    and k ~[0, length]
+    '''
     def forward_work(self, numwalks):
-        print self.rowsums;
         normalize = np.sum(np.absolute(self.z));
         sample = np.cumsum(np.absolute(self.z)/normalize);
         accum = 0.0;
-        nonzero = 0;
-        for k in rd.randint(self.lmax, size = numwalks):
+        for length in rd.randint(self.lmax+1, size = numwalks):
             start = bin_search(sample, rd.random());
-            score = self.run_k_fwalk(start, k);
-            nonzero+= 1 if (score > 0) else 0;
-            accum+= np.sign(self.z[start])*normalize*self.run_k_fwalk(start, k)
-        print accum/float(nonzero);
-        return accum/float(nonzero);
+            if length > 0:
+                for k in rd.randint(length, size = 1):
+                    accum+= self.lmax*np.sign(self.z[start])*normalize*self.run_k_fwalk(start, k, length)
+        print accum/float(numwalks);
+        return accum/float(numwalks) + self.z;
 
 import time
 class Solver:
@@ -169,22 +185,32 @@ class Solver:
         self.forward = ForwardWork(prob.G, prob.z, prob.target,
             self.rev.residuals, lmax);
 
-
+    '''
+    solves problem using only
+     reverse_push operations until residuals < maxresidual 
+    '''
     def reverse_only(self, maxresid):
         self.rev.reverse_work(maxresid);
         return np.sum(self.rev.qest_v*self.prob.z);
 
+    '''
+    does reverse push operations until maxresid tolerance is 
+    reached, and then does numwalks forward walks
+    '''
     def forward_back(self, maxresid, numwalks):
         self.rev.reverse_work(maxresid);
         const = np.sum(self.rev.qest_v*self.prob.z);
         score = self.forward.forward_work(numwalks)
         return score + const;
 
+    '''
+    balanced not implemented yet
+    '''
     def both_balanced(self):
         start = time.time();
         self.forward_work(10);
         end = time.time();
-        
+
 
 #time forward walks
 # total time is nt 
