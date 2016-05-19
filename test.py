@@ -3,7 +3,7 @@ import numpy as np;
 import time
 
 
-SYSTEM = 'Systems/t002'
+SYSTEM = 'Systems/t004'
 TARGET = 3
 RTOLERANCE = 1e-6
 TOLERANCE = 1e-3
@@ -15,7 +15,7 @@ G, z = FileReader.read_system(SYSTEM);
 print (G.shape[0]);
 
 # z = np.zeros(G.shape[0]);
-# z[TARGET] = 1;
+# z[0] = 1;
 
 problem = System(G, z, TARGET);
 solver = Solver(problem, LMAX);

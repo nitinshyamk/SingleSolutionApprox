@@ -154,7 +154,7 @@ class ForwardWork(System):
     def run_k_fwalk(self, ind, k, length):
         score = 1.0;
         for i in range(k):
-            next = bin_search(self.Gprob[ind, :], rd.random());
+            next = np.searchsorted(self.Gprob[ind, :], rd.random())
             score *= self.rowsums[ind]*self.Gsign[ind, next];
             ind = next;
         return score*self.residuals[length - k, ind];
@@ -171,7 +171,9 @@ class ForwardWork(System):
         for length in (rd.randint(self.lmax, size = numwalks)+1):
             start = bin_search(sample, rd.random());
             for k in range(length+1):
-                accum+= (self.lmax)*np.sign(self.z[start])*normalize*self.run_k_fwalk(start, k, length)
+                miniscore = self.run_k_fwalk(start, k, length);
+  
+                accum+= (self.lmax)*np.sign(self.z[start])*normalize*miniscore
         print 'score: '+str(accum/float(numwalks));
         return accum/float(numwalks) #+ self.z[self.target];
 
